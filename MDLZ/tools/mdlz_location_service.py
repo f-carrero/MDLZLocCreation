@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 
@@ -7,25 +8,22 @@ REQUIRED_STORE_COLS = ["name", "address", "lat", "lng", "ECC", "parentBranch", "
 REQUIRED_TRAILER_COLS = ["name", "parentBranch", "trailerLength", "trailerMake"]
 VALID_TRAILER_LENGTHS = {28, 48, 53}
 
+# Path to the static DC locations file shipped with the app
+DC_LOCATIONS_FILE = os.path.join(os.path.dirname(__file__), "..", "app", "data", "dc_locations.csv")
 
-def get_dc_locations(pc):
+
+def load_dc_locations(filepath=None):
     """
-    Fetches all DC (Distribution Center) locations from the Wiliot platform.
+    Loads DC locations from a static CSV file (columns: id, name).
     Returns a DataFrame with location_name and location_id for use as reference data.
 
-    :param pc: An already-instantiated PlatformClient
+    :param filepath: Optional override path to the CSV file
     :return: DataFrame with columns: location_name, location_id
     """
-    locations = pc.get_locations()
-    dc_locations = []
-    for loc in locations:
-        labels = loc.get("labels", {})
-        if labels.get("locationType") == "DC":
-            dc_locations.append({
-                "location_name": loc["name"],
-                "location_id": loc["id"],
-            })
-    return pd.DataFrame(dc_locations)
+    path = filepath or DC_LOCATIONS_FILE
+    df = pd.read_csv(path)
+    df = df.rename(columns={"id": "location_id", "name": "location_name"})
+    return df[["location_name", "location_id"]]
 
 
 def parse_upload(file, filename):
@@ -89,13 +87,13 @@ def validate_store_data(df, dc_locations_df):
         if count:
             errors.append(f"{count} rows have non-numeric '{col}' values.")
 
-    # Check parentBranch against DC list
+    # Check parentBranch against DC list (case-sensitive exact match)
     if len(dc_locations_df) > 0:
-        known_dcs = set(dc_locations_df["location_name"].str.strip())
+        known_dcs = set(dc_locations_df["location_name"])
         upload_branches = set(df["parentBranch"].dropna().str.strip().unique())
         unmatched = upload_branches - known_dcs
         if unmatched:
-            errors.append(f"parentBranch values not found in platform DCs: {sorted(unmatched)}")
+            errors.append(f"parentBranch values not found in DC list (case-sensitive): {sorted(unmatched)}")
 
     # Count rows with blanks in required fields
     blank_rows = 0
@@ -148,13 +146,13 @@ def validate_trailer_data(df, dc_locations_df):
     if invalid_lengths:
         errors.append(f"Unexpected trailerLength values: {sorted(invalid_lengths)}. Expected: {sorted(VALID_TRAILER_LENGTHS)}")
 
-    # Check parentBranch against DC list
+    # Check parentBranch against DC list (case-sensitive exact match)
     if len(dc_locations_df) > 0:
-        known_dcs = set(dc_locations_df["location_name"].str.strip())
+        known_dcs = set(dc_locations_df["location_name"])
         upload_branches = set(df["parentBranch"].dropna().str.strip().unique())
         unmatched = upload_branches - known_dcs
         if unmatched:
-            errors.append(f"parentBranch values not found in platform DCs: {sorted(unmatched)}")
+            errors.append(f"parentBranch values not found in DC list (case-sensitive): {sorted(unmatched)}")
 
     # Count rows with blanks in required fields
     blank_rows = 0

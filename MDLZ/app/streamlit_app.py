@@ -7,7 +7,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from tools.mdlz_location_service import (
-    get_dc_locations,
+    load_dc_locations,
     parse_upload,
     validate_store_data,
     validate_trailer_data,
@@ -68,10 +68,10 @@ def get_platform_client():
     return PlatformClient(api_key=api_key, owner_id=owner_id)
 
 
-@st.cache_data(ttl=300)
-def fetch_dc_locations(_pc):
-    """Fetch DC locations from platform (cached 5 min)."""
-    return get_dc_locations(_pc)
+@st.cache_data
+def fetch_dc_locations():
+    """Load DC locations from static CSV file."""
+    return load_dc_locations()
 
 
 # --- Session State Init ---
@@ -89,12 +89,24 @@ st.caption("Upload store or trailer data to create locations on the Wiliot platf
 
 # --- Load DC reference data ---
 pc = get_platform_client()
-dc_locations_df = fetch_dc_locations(pc)
+dc_locations_df = fetch_dc_locations()
 
 if len(dc_locations_df) == 0:
-    st.warning("No DC locations found on the platform. Store/trailer creation requires existing DCs.")
+    st.warning("No DC locations found. Check that app/data/dc_locations.csv exists and has data.")
 
-st.markdown(f"**{len(dc_locations_df)} DCs loaded** from the platform as reference data.")
+st.markdown(f"**{len(dc_locations_df)} DCs loaded** as reference data.")
+
+# --- Template Download ---
+TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "data", "MDLZ-Location-Creation-Inputs.xlsx")
+if os.path.exists(TEMPLATE_FILE):
+    with open(TEMPLATE_FILE, "rb") as f:
+        st.download_button(
+            "Download Input Template (.xlsx)",
+            f.read(),
+            "MDLZ-Location-Creation-Inputs.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_template",
+        )
 
 # --- Tabs ---
 tab_stores, tab_trailers = st.tabs(["Stores", "Trailers"])
