@@ -56,6 +56,8 @@ def parse_upload(file, filename, sheet_name=None):
     df = df.loc[:, ~df.columns.str.startswith("Unnamed:")]
     # Drop duplicate suffixed columns (e.g. parentBranch.1 from validation dropdowns)
     df = df.loc[:, ~df.columns.str.match(r".*\.\d+$")]
+    # Drop rows where all values are empty
+    df = df.dropna(how="all").reset_index(drop=True)
     return df
 
 
