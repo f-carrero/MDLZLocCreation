@@ -96,17 +96,10 @@ if len(dc_locations_df) == 0:
 
 st.markdown(f"**{len(dc_locations_df)} DCs loaded** as reference data.")
 
-# --- Template Download ---
-TEMPLATE_FILE = os.path.join(os.path.dirname(__file__), "data", "MDLZ-Location-Creation-Inputs.xlsx")
-if os.path.exists(TEMPLATE_FILE):
-    with open(TEMPLATE_FILE, "rb") as f:
-        st.download_button(
-            "Download Input Template (.xlsx)",
-            f.read(),
-            "MDLZ-Location-Creation-Inputs.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key="download_template",
-        )
+# --- Template file paths ---
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+STORES_TEMPLATE = os.path.join(DATA_DIR, "MDLZ-Stores-Creation-Inputs.xlsx")
+TRAILERS_TEMPLATE = os.path.join(DATA_DIR, "MDLZ-Trailers-Creation-Inputs.xlsx")
 
 # --- Tabs ---
 tab_stores, tab_trailers = st.tabs(["Stores", "Trailers"])
@@ -156,6 +149,16 @@ with tab_stores:
 
     st.markdown(f"**Required columns:** `{', '.join(REQUIRED_STORE_COLS)}`")
 
+    if os.path.exists(STORES_TEMPLATE):
+        with open(STORES_TEMPLATE, "rb") as f:
+            st.download_button(
+                "Download Stores Template (.xlsx)",
+                f.read(),
+                "MDLZ-Stores-Creation-Inputs.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_stores_template",
+            )
+
     store_file = st.file_uploader(
         "Upload store data (CSV or Excel)",
         type=["csv", "xlsx", "xls"],
@@ -164,12 +167,15 @@ with tab_stores:
 
     if store_file:
         try:
-            store_df = parse_upload(store_file, store_file.name)
+            store_df = parse_upload(store_file, store_file.name, sheet_name="Stores")
         except Exception as e:
             st.error(f"Failed to parse file: {e}")
             store_df = None
 
         if store_df is not None:
+            # Force name and address to uppercase
+            store_df["name"] = store_df["name"].astype(str).str.upper()
+            store_df["address"] = store_df["address"].astype(str).str.upper()
             st.markdown(f"**{len(store_df)} rows** loaded from `{store_file.name}`")
 
             # Data preview
@@ -233,6 +239,16 @@ with tab_trailers:
 
     st.markdown(f"**Required columns:** `{', '.join(REQUIRED_TRAILER_COLS)}`")
 
+    if os.path.exists(TRAILERS_TEMPLATE):
+        with open(TRAILERS_TEMPLATE, "rb") as f:
+            st.download_button(
+                "Download Trailers Template (.xlsx)",
+                f.read(),
+                "MDLZ-Trailers-Creation-Inputs.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="download_trailers_template",
+            )
+
     trailer_file = st.file_uploader(
         "Upload trailer data (CSV or Excel)",
         type=["csv", "xlsx", "xls"],
@@ -241,12 +257,14 @@ with tab_trailers:
 
     if trailer_file:
         try:
-            trailer_df = parse_upload(trailer_file, trailer_file.name)
+            trailer_df = parse_upload(trailer_file, trailer_file.name, sheet_name="Trailers")
         except Exception as e:
             st.error(f"Failed to parse file: {e}")
             trailer_df = None
 
         if trailer_df is not None:
+            # Force trailerMake to uppercase
+            trailer_df["trailerMake"] = trailer_df["trailerMake"].astype(str).str.upper()
             st.markdown(f"**{len(trailer_df)} rows** loaded from `{trailer_file.name}`")
 
             # Data preview

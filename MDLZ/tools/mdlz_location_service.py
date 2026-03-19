@@ -26,23 +26,29 @@ def load_dc_locations(filepath=None):
     return df[["location_name", "location_id"]]
 
 
-def parse_upload(file, filename):
+def parse_upload(file, filename, sheet_name=None):
     """
     Parses an uploaded file (CSV or Excel) into a DataFrame.
-    Normalizes column names by stripping whitespace.
+    Normalizes column names by stripping whitespace and drops unnamed columns.
 
     :param file: File-like object (e.g., Streamlit UploadedFile)
     :param filename: Original filename (used to detect format)
+    :param sheet_name: Optional sheet name to read from Excel files
     :return: DataFrame
     """
     if filename.endswith(".csv"):
         df = pd.read_csv(file)
     elif filename.endswith((".xlsx", ".xls")):
-        df = pd.read_excel(file)
+        kwargs = {"sheet_name": sheet_name} if sheet_name else {}
+        df = pd.read_excel(file, **kwargs)
     else:
         raise ValueError(f"Unsupported file format: {filename}. Use CSV or Excel (.xlsx).")
 
     df.columns = [col.strip() for col in df.columns]
+    # Drop unnamed/extra columns that come from template formatting
+    df = df.loc[:, ~df.columns.str.startswith("Unnamed:")]
+    # Drop duplicate suffixed columns (e.g. parentBranch.1 from validation dropdowns)
+    df = df.loc[:, ~df.columns.str.match(r".*\.\d+$")]
     return df
 
 
