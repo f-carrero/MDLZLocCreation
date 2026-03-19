@@ -1,4 +1,0 @@
-streamlit
-wiliot-api
-pandas
-openpyxl
